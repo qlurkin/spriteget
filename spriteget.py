@@ -9,12 +9,13 @@ import math
 
 os.system("")
 
-HOME = Path.home()
-SPRITE_FOLDER = os.path.join(HOME, ".config/sprites")
-
 
 class UserError(Exception):
     pass
+
+
+HOME = Path.home()
+SPRITE_FOLDER = os.path.join(HOME, ".config/sprites")
 
 
 def twoPixel(top, bottom):
@@ -27,7 +28,29 @@ def twoPixel(top, bottom):
     return f"\033[48;2;{top[0]};{top[1]};{top[2]}m\033[38;2;{bottom[0]};{bottom[1]};{bottom[2]}m▄"
 
 
+def credit(name, width):
+    txt = f"sprite by {name}"
+    padding = 0
+    if width > len(txt):
+        padding = (width - len(txt)) // 2
+    return "\n" + " " * padding + txt + "\n"
+
+
 def load_image(path):
+    basename = os.path.basename(path)
+    name, ext = os.path.splitext(basename)
+    author = None
+    if " by " in name:
+        parts = name.split(" by ")
+        author = parts[-1]
+    with Image.open(path) as im:
+        if im.mode != "RGBA":
+            raise UserError(f"{path} is not RGBA")
+        res = im.copy()
+    return res, author
+
+
+def load_image2(path):
     with Image.open(path) as im:
         if im.mode != "RGBA":
             raise UserError(f"{path} is not RGBA")
@@ -35,34 +58,45 @@ def load_image(path):
     return res
 
 
-def image(path=None, width=None, height=None):
-    if not os.path.exists(SPRITE_FOLDER):
-        raise UserError("`~/.config/sprites` do not exists")
+def search_image(width: None | int, height: None | int) -> tuple[Image.Image, str]:
+    start = time.time()
+    while True:
+        path = os.path.join(SPRITE_FOLDER, random.choice(sprites))
+        im = load_image2(path)
+        if (
+            (width is None or im.width <= width)
+            and (height is None or math.ceil(im.height / 2) <= height)
+        ) or time.time() - start > 0.1:
+            return im, path
 
-    sprites = sorted(os.listdir(SPRITE_FOLDER))
 
-    if len(sprites) == 0:
-        raise UserError("No file in `~/.config/sprites`")
-
+def get_image(
+    path: None | int | str, width: None | int, height: None | int
+) -> tuple[Image.Image, str]:
     if path is None:
-        start = time.time()
-        while True:
-            path = os.path.join(SPRITE_FOLDER, random.choice(sprites))
-            im = load_image(path)
-            if (width is None or im.width <= width) and (
-                height is None or math.ceil(im.height / 2) <= height
-            ):
-                break
-            if time.time() - start > 0.1:
-                break
+        return search_image(width, height)
 
-    else:
-        if isinstance(path, int):
-            if path <= 0 or path >= len(sprites):
-                raise UserError("Invalid sprite index")
-            path = os.path.join(SPRITE_FOLDER, sprites[path - 1])
-        im = load_image(path)
+    if isinstance(path, int):
+        if path <= 0 or path >= len(sprites):
+            raise UserError("Invalid sprite index")
+        path = os.path.join(SPRITE_FOLDER, sprites[path - 1])
+        im = load_image2(path)
+        return im, path
 
+    return load_image2(path), path
+
+
+def get_author(path: str) -> str:
+    basename = os.path.basename(path)
+    name, _ = os.path.splitext(basename)
+    author = ""
+    if " by " in name:
+        parts = name.split(" by ")
+        author = parts[-1]
+    return author
+
+
+def render_image(im: Image.Image, width: None | int, height: None | int):
     padding_w = 0
     crop_w = 0
     padding_h = 0
@@ -99,7 +133,30 @@ def image(path=None, width=None, height=None):
 
     res += "\n" * padding_h
 
-    print(res, end="")
+    return res
+
+
+def image(
+    path: None | int | str = None,
+    width: None | int = None,
+    height: None | int = None,
+    show_author: bool = False,
+):
+    if show_author and height is not None:
+        height -= 2
+
+    im, path = get_image(path, width, height)
+
+    author = get_author(path)
+
+    image_txt = render_image(im, width, height)
+
+    if show_author:
+        if width is None:
+            width = im.width
+        image_txt += credit(author, width)
+
+    print(image_txt, end="")
 
 
 if __name__ == "__main__":
@@ -124,8 +181,21 @@ if __name__ == "__main__":
         type=int,
         help="The number of characters that the sprite must take in height. If the sprite is smaller padding will be added and the sprite will be centered. If the sprite is larger it will be cropped. If the sprite is randomly selected, we will try to find one that is not larger.",
     )
+    parser.add_argument(
+        "--author",
+        action="store_true",
+        help="Display the author mentioned in the sprite filename behind de `by` keyword.",
+    )
 
     try:
+        if not os.path.exists(SPRITE_FOLDER):
+            raise UserError("`~/.config/sprites` do not exists")
+
+        sprites = sorted(os.listdir(SPRITE_FOLDER))
+
+        if len(sprites) == 0:
+            raise UserError("No file in `~/.config/sprites`")
+
         if len(sys.argv) < 2:
             image()
         else:
@@ -136,7 +206,7 @@ if __name__ == "__main__":
                     sprite = int(sprite)
                 except ValueError:
                     pass
-            image(sprite, args.width, args.height)
+            image(sprite, args.width, args.height, args.author)
 
     except UserError as e:
         print(f"Error: {e}")
