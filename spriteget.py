@@ -6,6 +6,7 @@ import sys
 import time
 import argparse
 import math
+import subprocess as sp
 
 os.system("")
 
@@ -141,6 +142,7 @@ def image(
     width: None | int = None,
     height: None | int = None,
     show_author: bool = False,
+    show_neofetch: bool = False,
 ):
     if show_author and height is not None:
         height -= 2
@@ -155,6 +157,36 @@ def image(
         if width is None:
             width = im.width
         image_txt += credit(author, width)
+
+    if show_neofetch:
+        combined = []
+        neofetch_out = (
+            sp.run(["neofetch", "--off"], capture_output=True)
+            .stdout.decode()
+            .splitlines()[:-1]
+        )
+        image_txt = image_txt.splitlines()
+
+        if len(neofetch_out) > len(image_txt):
+            image_txt_padding = (len(neofetch_out) - len(image_txt)) // 2
+            neofetch_out_padding = 0
+        else:
+            neofetch_out_padding = (len(image_txt) - len(neofetch_out)) // 2
+            image_txt_padding = 0
+
+        for i in range(max(len(image_txt), len(neofetch_out))):
+            if i >= image_txt_padding and i < len(image_txt) + image_txt_padding:
+                combined.append("   " + image_txt[i - image_txt_padding])
+            else:
+                combined.append("   " + " " * len(image_txt[0]))
+
+            if (
+                i >= neofetch_out_padding
+                and i < len(neofetch_out) + neofetch_out_padding
+            ):
+                combined[-1] += "   " + neofetch_out[i - neofetch_out_padding]
+
+        image_txt = "\n".join(combined) + "\n"
 
     print(image_txt, end="")
 
@@ -187,6 +219,12 @@ if __name__ == "__main__":
         help="Display the author mentioned in the sprite filename behind de `by` keyword.",
     )
 
+    parser.add_argument(
+        "--neofetch",
+        action="store_true",
+        help="Display the neofetch output",
+    )
+
     try:
         if not os.path.exists(SPRITE_FOLDER):
             raise UserError("`~/.config/sprites` do not exists")
@@ -206,7 +244,7 @@ if __name__ == "__main__":
                     sprite = int(sprite)
                 except ValueError:
                     pass
-            image(sprite, args.width, args.height, args.author)
+            image(sprite, args.width, args.height, args.author, args.neofetch)
 
     except UserError as e:
         print(f"Error: {e}")
