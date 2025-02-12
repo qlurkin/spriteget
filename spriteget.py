@@ -163,7 +163,7 @@ def image(
         neofetch_out = (
             sp.run(["neofetch", "--off"], capture_output=True)
             .stdout.decode()
-            .splitlines()[:-1]
+            .splitlines()
         )
         image_txt = image_txt.splitlines()
 
@@ -171,7 +171,7 @@ def image(
             image_txt_padding = (len(neofetch_out) - len(image_txt)) // 2
             neofetch_out_padding = 0
         else:
-            neofetch_out_padding = (len(image_txt) - len(neofetch_out)) // 2
+            neofetch_out_padding = (len(image_txt) - len(neofetch_out)) // 2 + 2
             image_txt_padding = 0
 
         for i in range(max(len(image_txt), len(neofetch_out))):
