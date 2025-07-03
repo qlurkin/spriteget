@@ -161,7 +161,9 @@ def image(
     if show_neofetch:
         combined = []
         neofetch_out = (
-            sp.run(["neofetch", "--off"], capture_output=True)
+            # sp.run(["fastfetch", "-l", "none"], capture_output=True)
+            sp.run(["fastfetch", "-c", "neofetch", "-l", "none"], capture_output=True)
+            # sp.run(["neofetch", "--off"], capture_output=True)
             .stdout.decode()
             .splitlines()
         )
