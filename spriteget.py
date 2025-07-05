@@ -34,7 +34,14 @@ def credit(name, width):
     padding = 0
     if width > len(txt):
         padding = (width - len(txt)) // 2
-    return "\n" + " " * padding + txt + "\n"
+    return (
+        " " * width
+        + "\n"
+        + " " * padding
+        + txt
+        + " " * (width - padding - len(txt))
+        + "\n"
+    )
 
 
 def load_image(path):
@@ -107,6 +114,8 @@ def render_image(im: Image.Image, width: None | int, height: None | int):
             padding_w = (width - im.width) // 2
         else:
             crop_w = (im.width - width) // 2
+    else:
+        width = im.width
     cheight = math.ceil(im.height / 2)
     if height is not None:
         if height > cheight:
@@ -116,7 +125,7 @@ def render_image(im: Image.Image, width: None | int, height: None | int):
 
     res = ""
 
-    res += "\n" * padding_h
+    res += (" " * width + "\n") * padding_h
 
     for y in range(crop_h, ((im.height - crop_h) // 2) * 2, 2):
         res += " " * padding_w
@@ -132,7 +141,7 @@ def render_image(im: Image.Image, width: None | int, height: None | int):
         res += "\033[0m" + " " * padding_w
         res += "\n"
 
-    res += "\n" * padding_h
+    res += (" " * width + "\n") * padding_h
 
     return res
 
@@ -162,9 +171,13 @@ def image(
         combined = []
         neofetch_out = (
             # sp.run(["fastfetch", "-l", "none"], capture_output=True)
-            sp.run(["fastfetch", "-c", "neofetch", "-l", "none"], capture_output=True)
+            sp.run(
+                ["fastfetch", "-c", "neofetch", "-l", "none", "--pipe", "false"],
+                capture_output=True,
+            )
             # sp.run(["neofetch", "--off"], capture_output=True)
             .stdout.decode()
+            .strip()
             .splitlines()
         )
         image_txt = image_txt.splitlines()
